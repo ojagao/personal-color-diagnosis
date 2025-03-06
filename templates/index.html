@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>パーソナルカラー診断</title>
+    <script>
+      // APIエンドポイントの設定
+      const API_ENDPOINT =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "" // ローカル開発環境
+          : "https://your-render-app.onrender.com"; // RenderのURLに変更してください
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+        background-color: #f0f2f5;
+      }
+      .container {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .charts-container {
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+      .chart-wrapper {
+        width: 45%;
+        min-width: 300px;
+        margin: 10px;
+        padding: 15px;
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .type-selector {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        text-align: left;
+      }
+      .type-checkbox {
+        margin: 5px 10px;
+        cursor: pointer;
+      }
+      .type-checkbox input[type="checkbox"] {
+        margin-right: 8px;
+      }
+      .type-checkbox span {
+        vertical-align: middle;
+      }
+      .detected-color-box {
+        width: 120px;
+        height: 120px;
+        margin: 15px auto;
+        border: 3px solid #ddd;
+        border-radius: 15px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .detected-color-box:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+      }
+      .detected-color-box::after {
+        content: '検出された肌色';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 5px 0;
+        font-size: 12px;
+        font-weight: bold;
+      }
+      #video,
+      #canvas {
+        width: 100%;
+        max-width: 640px;
+        margin: 20px auto;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      #canvas {
+        display: none;
+      }
+      button {
+        background-color: #4caf50;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+      }
+      button:hover {
+        background-color: #45a049;
+        transform: translateY(-2px);
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      #result {
+        margin-top: 20px;
+        font-size: 1.2em;
+        padding: 20px;
+        border-radius: 10px;
+        background-color: #f8f9fa;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+      }
+      #result .result-type {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 8px;
+        display: inline-block;
+        animation: highlight 1.5s ease-in-out;
+      }
+      #result .result-advice {
+        margin-top: 10px;
+        line-height: 1.6;
+      }
+      @keyframes highlight {
+        0% { background-color: rgba(255, 255, 0, 0); }
+        50% { background-color: rgba(255, 255, 0, 0.3); }
+        100% { background-color: rgba(255, 255, 0, 0); }
+      }
+      .error {
+        color: #dc3545;
+        background-color: #f8d7da;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      #countdown {
+        font-size: 48px;
+        font-weight: bold;
+        color: #4caf50;
+        margin: 20px 0;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>パーソナルカラー診断</h1>
+    <div class="container">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div id="countdown"></div>
+      <button id="startButton">カメラを起動</button>
+      <button id="captureButton" disabled>診断開始</button>
+      <div id="result"></div>
+
+      <div class="charts-container" style="display: none" id="chartsContainer">
+        <div class="chart-wrapper">
+          <h3>診断スコア</h3>
+          <div class="type-selector" id="typeSelector">
+            <div class="type-checkbox">
+              <input type="checkbox" id="type-イエベ春" data-type="イエベ春" />
+              <span style="color: rgb(255, 182, 193)">●</span>
+              <span>イエベ春</span>
+            </div>
+            <div class="type-checkbox">
+              <input type="checkbox" id="type-ブルベ夏" data-type="ブルベ夏" />
+              <span style="color: rgb(135, 206, 235)">●</span>
+              <span>ブルベ夏</span>
+            </div>
+            <div class="type-checkbox">
+              <input type="checkbox" id="type-イエベ秋" data-type="イエベ秋" />
+              <span style="color: rgb(205, 133, 63)">●</span>
+              <span>イエベ秋</span>
+            </div>
+            <div class="type-checkbox">
+              <input type="checkbox" id="type-ブルベ冬" data-type="ブルベ冬" />
+              <span style="color: rgb(106, 90, 205)">●</span>
+              <span>ブルベ冬</span>
+            </div>
+          </div>
+          <canvas id="radarChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+          <h3>検出された肌色</h3>
+          <div class="detected-color-box" id="detectedColorBox"></div>
+          <canvas id="hueChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("canvas");
+      const startButton = document.getElementById("startButton");
+      const captureButton = document.getElementById("captureButton");
+      const countdown = document.getElementById("countdown");
+      const result = document.getElementById("result");
+
+      // レーダーチャートのパラメータ
+      const parameters = ["総合スコア", "色相スコア", "彩度スコア", "明度スコア"];
+
+      const typeColors = {
+        イエベ春: "rgb(255, 182, 193)", // ピンク
+        ブルベ夏: "rgb(135, 206, 235)", // スカイブルー
+        イエベ秋: "rgb(205, 133, 63)", // ペルー
+        ブルベ冬: "rgb(106, 90, 205)", // スレートブルー
+      };
+      let stream = null;
+      let radarChart = null;
+
+      // チャートを更新する関数
+      function updateChart(typeScores) {
+        // 初期表示時にチェックボックスがない場合、全てのタイプを選択状態にする
+        const checkboxes = document.querySelectorAll(".type-checkbox input");
+        if (Array.from(checkboxes).every(cb => !cb.checked)) {
+          checkboxes.forEach(cb => cb.checked = true);
+        }
+        
+        const selectedTypes = Array.from(document.querySelectorAll(".type-checkbox input:checked")).map((cb) => cb.dataset.type);
+
+        const datasets = Object.entries(typeScores)
+          .filter(([type]) => selectedTypes.includes(type))
+          .map(([type, scores]) => ({
+            label: type,
+            data: [scores.total_score * 100, scores.hue_score * 100, scores.saturation_score * 100, scores.value_score * 100],
+            borderColor: typeColors[type],
+            backgroundColor: typeColors[type].replace("rgb", "rgba").replace(")", ", 0.2)"),
+            borderWidth: 2,
+          }));
+
+        // 既存のチャートを破棄
+        if (radarChart) {
+          radarChart.destroy();
+        }
+
+        // 新しいチャートを作成
+        const radarCtx = document.getElementById("radarChart").getContext("2d");
+        radarChart = new Chart(radarCtx, {
+          type: "radar",
+          data: {
+            labels: parameters,
+            datasets: datasets,
+          },
+          options: {
+            scales: {
+              r: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                  stepSize: 10,  // より細かい目盛りで差を視認しやすく
+                  font: {
+                    size: 10,  // フォントサイズを小さくして見やすく
+                  },
+                  color: '#666',  // 目盛りの色を薄く
+                },
+                pointLabels: {
+                  font: {
+                    size: 14,
+                    weight: 'bold',  // ラベルを太字に
+                  },
+                },
+                angleLines: {
+                  color: 'rgba(0, 0, 0, 0.1)',  // 角度線を薄く
+                },
+                grid: {
+                  color: 'rgba(0, 0, 0, 0.05)',  // グリッド線をさらに薄く
+                },
+              },
+            },
+            plugins: {
+              legend: {
+                display: false, // 凡例を非表示にする
+              },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleFont: {
+                  size: 14,
+                  weight: 'bold',
+                },
+                bodyFont: {
+                  size: 13,
+                },
+                padding: 12,
+                callbacks: {
+                  label: function (context) {
+                    return `${context.dataset.label}: ${context.formattedValue}%`;
+                  },
+                },
+              },
+            },
+            elements: {
+              line: {
+                tension: 0.2,  // 線をより滑らかに
+                borderWidth: 3,  // 線を太く
+              },
+              point: {
+                radius: 4,  // ポイントを大きく
+                hoverRadius: 6,  // ホバー時にさらに大きく
+                borderWidth: 2,
+              },
+            },
+            animation: {
+              duration: 1000,  // アニメーションを長めに
+              easing: 'easeOutQuart',  // イージング関数を変更
+            },
+          },
+        });
+      }
+
+      startButton.addEventListener("click", async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: "user",
+            },
+          });
+          video.srcObject = stream;
+          startButton.disabled = true;
+          captureButton.disabled = false;
+        } catch (err) {
+          result.innerHTML = `<p class="error">カメラの起動に失敗しました: ${err.message}</p>`;
+        }
+      });
+
+      captureButton.addEventListener("click", () => {
+        captureButton.disabled = true;
+        countdown.style.display = "block";
+        let count = 3;
+        countdown.textContent = count;
+
+        const timer = setInterval(() => {
+          count--;
+          if (count > 0) {
+            countdown.textContent = count;
+          } else {
+            clearInterval(timer);
+            countdown.style.display = "none";
+            captureAndAnalyze();
+          }
+        }, 1000);
+      });
+
+      function captureAndAnalyze() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+
+        canvas.toBlob(
+          (blob) => {
+            const formData = new FormData();
+            formData.append("image", blob, "capture.jpg");
+
+            fetch(API_ENDPOINT + "/analyze", {
+              method: "POST",
+              body: formData,
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.error) {
+                  result.innerHTML = `<p class="error">${data.error}</p>`;
+                  console.error("エラー:", data.error);
+                  document.getElementById("chartsContainer").style.display = "none";
+                } else {
+                  // 結果表示をよりリッチにフォーマット
+                  const resultMessage = data.message.split('\n');
+                  const typeText = resultMessage[0];
+                  const adviceText = resultMessage[1];
+                  
+                  // 色タイプに応じた背景色を設定
+                  let typeBgColor = 'rgba(255, 255, 255, 0.7)';
+                  if (data.result === 'イエベ春') {
+                    typeBgColor = 'rgba(255, 182, 193, 0.2)';
+                  } else if (data.result === 'ブルベ夏') {
+                    typeBgColor = 'rgba(135, 206, 235, 0.2)';
+                  } else if (data.result === 'イエベ秋') {
+                    typeBgColor = 'rgba(205, 133, 63, 0.2)';
+                  } else if (data.result === 'ブルベ冬') {
+                    typeBgColor = 'rgba(106, 90, 205, 0.2)';
+                  }
+                  
+                  result.innerHTML = `
+                    <div class="result-type" style="background-color: ${typeBgColor}">${typeText}</div>
+                    <div class="result-advice">${adviceText}</div>
+                  `;
+                  document.getElementById("chartsContainer").style.display = "flex";
+
+                  // 診断の詳細情報をコンソールに表示
+                  console.log("✨ パーソナルカラー診断結果");
+                  console.log("【検出された肌色】", data.details.detected_color);
+
+                  // レーダーチャートのデータを準備
+                  const parameters = ["総合スコア", "色相スコア", "彩度スコア", "明度スコア"];
+
+                  const typeColors = {
+                    イエベ春: "rgb(255, 182, 193)", // ピンク
+                    ブルベ夏: "rgb(135, 206, 235)", // スカイブルー
+                    イエベ秋: "rgb(205, 133, 63)", // ペルー
+                    ブルベ冬: "rgb(106, 90, 205)", // スレートブルー
+                  };
+
+                  // チェックボックスのイベントリスナーを設定
+                  document.querySelectorAll(".type-checkbox input").forEach((checkbox) => {
+                    checkbox.addEventListener("change", () => updateChart(data.details.type_scores));
+                  });
+
+                  // 診断されたタイプを特定
+                  const diagnosedType = Object.entries(data.details.type_scores).reduce((a, b) => (a[1].total_score > b[1].total_score ? a : b))[0];
+
+                  // 診断されたタイプのチェックボックスをチェック
+                  document.getElementById(`type-${diagnosedType}`).checked = true;
+
+                  // 初回のチャート表示
+                  updateChart(data.details.type_scores);
+
+                  // 検出された肌色を表示
+                  const h = data.details.detected_color.hue;
+                  const s = data.details.detected_color.saturation;
+                  const v = data.details.detected_color.value;
+                  const colorBox = document.getElementById("detectedColorBox");
+                  colorBox.style.backgroundColor = `hsl(${h * 2}, ${(s / 255) * 100}%, ${(v / 255) * 100}%)`;
+
+                  // 色相環を描画
+                  const hueCtx = document.getElementById("hueChart").getContext("2d");
+                  new Chart(hueCtx, {
+                    type: "doughnut",
+                    data: {
+                      labels: ["検出された色相"],
+                      datasets: [
+                        {
+                          data: [1],
+                          backgroundColor: `hsl(${h * 2}, 70%, 60%)`,
+                          circumference: 180,
+                          rotation: -90,
+                        },
+                      ],
+                    },
+                    options: {
+                      plugins: {
+                        legend: {
+                          display: false,
+                        },
+                        tooltip: {
+                          callbacks: {
+                            label: function (context) {
+                              return `色相: ${h.toFixed(1)}°`;
+                            },
+                          },
+                        },
+                      },
+                    },
+                  });
+
+                  // コンソールに詳細情報を表示
+                  Object.entries(data.details.type_scores).forEach(([type, scores]) => {
+                    console.log(`\n◆ ${type}`);
+                    console.log(`  総合スコア: ${(scores.total_score * 100).toFixed(1)}%`);
+                    console.log(`  色相スコア: ${(scores.hue_score * 100).toFixed(1)}%`);
+                    console.log(`  彩度スコア: ${(scores.saturation_score * 100).toFixed(1)}%`);
+                    console.log(`  明度スコア: ${(scores.value_score * 100).toFixed(1)}%`);
+                    console.log("  評価範囲:");
+                    console.log(`    色相: ${JSON.stringify(scores.ranges.hue)}`);
+                    console.log(`    彩度: ${scores.ranges.saturation}`);
+                    console.log(`    明度: ${scores.ranges.value}`);
+                  });
+                }
+                captureButton.disabled = false;
+              })
+              .catch((error) => {
+                result.innerHTML = '<p class="error">エラーが発生しました。もう一度お試しください。</p>';
+                console.error("エラー:", error);
+                captureButton.disabled = false;
+              });
+          },
+          "image/jpeg",
+          0.95
+        );
+      }
+
+      // ページを離れる時にカメラをオフにする
+      window.addEventListener("beforeunload", () => {
+        if (stream) {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+      });
+    </script>
+  </body>
+</html>

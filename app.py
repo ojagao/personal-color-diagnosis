@@ -8,7 +8,7 @@ from face_detector import FaceDetector
 import logging
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)

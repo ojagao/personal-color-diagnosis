@@ -84,7 +84,7 @@
         box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
       }
       .detected-color-box::after {
-        content: '検出された肌色';
+        content: "検出された肌色";
         position: absolute;
         bottom: 0;
         left: 0;
@@ -147,9 +147,15 @@
         line-height: 1.6;
       }
       @keyframes highlight {
-        0% { background-color: rgba(255, 255, 0, 0); }
-        50% { background-color: rgba(255, 255, 0, 0.3); }
-        100% { background-color: rgba(255, 255, 0, 0); }
+        0% {
+          background-color: rgba(255, 255, 0, 0);
+        }
+        50% {
+          background-color: rgba(255, 255, 0, 0.3);
+        }
+        100% {
+          background-color: rgba(255, 255, 0, 0);
+        }
       }
       .error {
         color: #dc3545;
@@ -235,10 +241,10 @@
       function updateChart(typeScores) {
         // 初期表示時にチェックボックスがない場合、全てのタイプを選択状態にする
         const checkboxes = document.querySelectorAll(".type-checkbox input");
-        if (Array.from(checkboxes).every(cb => !cb.checked)) {
-          checkboxes.forEach(cb => cb.checked = true);
+        if (Array.from(checkboxes).every((cb) => !cb.checked)) {
+          checkboxes.forEach((cb) => (cb.checked = true));
         }
-        
+
         const selectedTypes = Array.from(document.querySelectorAll(".type-checkbox input:checked")).map((cb) => cb.dataset.type);
 
         const datasets = Object.entries(typeScores)
@@ -271,23 +277,23 @@
                 beginAtZero: true,
                 max: 100,
                 ticks: {
-                  stepSize: 10,  // より細かい目盛りで差を視認しやすく
+                  stepSize: 10, // より細かい目盛りで差を視認しやすく
                   font: {
-                    size: 10,  // フォントサイズを小さくして見やすく
+                    size: 10, // フォントサイズを小さくして見やすく
                   },
-                  color: '#666',  // 目盛りの色を薄く
+                  color: "#666", // 目盛りの色を薄く
                 },
                 pointLabels: {
                   font: {
                     size: 14,
-                    weight: 'bold',  // ラベルを太字に
+                    weight: "bold", // ラベルを太字に
                   },
                 },
                 angleLines: {
-                  color: 'rgba(0, 0, 0, 0.1)',  // 角度線を薄く
+                  color: "rgba(0, 0, 0, 0.1)", // 角度線を薄く
                 },
                 grid: {
-                  color: 'rgba(0, 0, 0, 0.05)',  // グリッド線をさらに薄く
+                  color: "rgba(0, 0, 0, 0.05)", // グリッド線をさらに薄く
                 },
               },
             },
@@ -296,10 +302,10 @@
                 display: false, // 凡例を非表示にする
               },
               tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                backgroundColor: "rgba(0, 0, 0, 0.8)",
                 titleFont: {
                   size: 14,
-                  weight: 'bold',
+                  weight: "bold",
                 },
                 bodyFont: {
                   size: 13,
@@ -314,18 +320,18 @@
             },
             elements: {
               line: {
-                tension: 0.2,  // 線をより滑らかに
-                borderWidth: 3,  // 線を太く
+                tension: 0.2, // 線をより滑らかに
+                borderWidth: 3, // 線を太く
               },
               point: {
-                radius: 4,  // ポイントを大きく
-                hoverRadius: 6,  // ホバー時にさらに大きく
+                radius: 4, // ポイントを大きく
+                hoverRadius: 6, // ホバー時にさらに大きく
                 borderWidth: 2,
               },
             },
             animation: {
-              duration: 1000,  // アニメーションを長めに
-              easing: 'easeOutQuart',  // イージング関数を変更
+              duration: 1000, // アニメーションを長めに
+              easing: "easeOutQuart", // イージング関数を変更
             },
           },
         });
@@ -380,10 +386,10 @@
             fetch(API_ENDPOINT + "/analyze", {
               method: "POST",
               body: formData,
-              mode: 'cors',
-              credentials: 'same-origin',
+              mode: "cors",
+              credentials: "same-origin",
               headers: {
-                'Accept': 'application/json',
+                Accept: "application/json",
               },
             })
               .then((response) => {
@@ -396,26 +402,25 @@
                 if (data.error) {
                   result.innerHTML = `<p class="error">${data.error}</p>`;
                   console.error("エラー:", data.error);
-                }
                   document.getElementById("chartsContainer").style.display = "none";
                 } else {
                   // 結果表示をよりリッチにフォーマット
-                  const resultMessage = data.message.split('\n');
+                  const resultMessage = data.message.split("\n");
                   const typeText = resultMessage[0];
                   const adviceText = resultMessage[1];
-                  
+
                   // 色タイプに応じた背景色を設定
-                  let typeBgColor = 'rgba(255, 255, 255, 0.7)';
-                  if (data.result === 'イエベ春') {
-                    typeBgColor = 'rgba(255, 182, 193, 0.2)';
-                  } else if (data.result === 'ブルベ夏') {
-                    typeBgColor = 'rgba(135, 206, 235, 0.2)';
-                  } else if (data.result === 'イエベ秋') {
-                    typeBgColor = 'rgba(205, 133, 63, 0.2)';
-                  } else if (data.result === 'ブルベ冬') {
-                    typeBgColor = 'rgba(106, 90, 205, 0.2)';
+                  let typeBgColor = "rgba(255, 255, 255, 0.7)";
+                  if (data.result === "イエベ春") {
+                    typeBgColor = "rgba(255, 182, 193, 0.2)";
+                  } else if (data.result === "ブルベ夏") {
+                    typeBgColor = "rgba(135, 206, 235, 0.2)";
+                  } else if (data.result === "イエベ秋") {
+                    typeBgColor = "rgba(205, 133, 63, 0.2)";
+                  } else if (data.result === "ブルベ冬") {
+                    typeBgColor = "rgba(106, 90, 205, 0.2)";
                   }
-                  
+
                   result.innerHTML = `
                     <div class="result-type" style="background-color: ${typeBgColor}">${typeText}</div>
                     <div class="result-advice">${adviceText}</div>
@@ -504,7 +509,7 @@
                 captureButton.disabled = false;
               })
               .catch((error) => {
-                result.innerHTML = `<p class="error">エラーが発生しました: ${error.message || '不明なエラー'}</p>`;
+                result.innerHTML = `<p class="error">エラーが発生しました: ${error.message || "不明なエラー"}</p>`;
                 console.error("エラー:", error);
                 document.getElementById("chartsContainer").style.display = "none";
                 document.getElementById("loading").style.display = "none";

@@ -14,6 +14,14 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# すべてのレスポンスにCORSヘッダーを追加
+@app.after_request
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    return response
+
 face_detector = FaceDetector()
 color_analyzer = ColorAnalyzer()
 
@@ -23,6 +31,15 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
+    # CORSヘッダーを明示的に設定
+    response = jsonify({'message': 'This is a preflight response'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    
+    # OPTIONSリクエストの場合はここで返す
+    if request.method == 'OPTIONS':
+        return response
     try:
         if 'image' not in request.files:
             return jsonify({

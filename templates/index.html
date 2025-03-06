@@ -6,10 +6,15 @@
     <title>パーソナルカラー診断</title>
     <script>
       // APIエンドポイントの設定
-      const API_ENDPOINT =
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-          ? "" // ローカル開発環境
-          : "https://your-render-app.onrender.com"; // RenderのURLに変更してください
+      let API_ENDPOINT = "";
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        // ローカル開発環境
+        API_ENDPOINT = "";
+      } else {
+        // 本番環境
+        API_ENDPOINT = window.location.origin;
+      }
+      console.log("API Endpoint:", API_ENDPOINT);
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -244,6 +249,7 @@
             borderColor: typeColors[type],
             backgroundColor: typeColors[type].replace("rgb", "rgba").replace(")", ", 0.2)"),
             borderWidth: 2,
+            tension: 0, // テンションを0に設定（直線になります）
           }));
 
         // 既存のチャートを破棄
@@ -370,15 +376,27 @@
             const formData = new FormData();
             formData.append("image", blob, "capture.jpg");
 
+            console.log("Sending request to:", API_ENDPOINT + "/analyze");
             fetch(API_ENDPOINT + "/analyze", {
               method: "POST",
               body: formData,
+              mode: 'cors',
+              credentials: 'same-origin',
+              headers: {
+                'Accept': 'application/json',
+              },
             })
-              .then((response) => response.json())
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+              })
               .then((data) => {
                 if (data.error) {
                   result.innerHTML = `<p class="error">${data.error}</p>`;
                   console.error("エラー:", data.error);
+                }
                   document.getElementById("chartsContainer").style.display = "none";
                 } else {
                   // 結果表示をよりリッチにフォーマット
@@ -486,8 +504,10 @@
                 captureButton.disabled = false;
               })
               .catch((error) => {
-                result.innerHTML = '<p class="error">エラーが発生しました。もう一度お試しください。</p>';
+                result.innerHTML = `<p class="error">エラーが発生しました: ${error.message || '不明なエラー'}</p>`;
                 console.error("エラー:", error);
+                document.getElementById("chartsContainer").style.display = "none";
+                document.getElementById("loading").style.display = "none";
                 captureButton.disabled = false;
               });
           },
